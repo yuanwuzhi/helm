@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.name }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: {{ .Values.name }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Values.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.name }}
+    spec:
+      nodeSelector:
+        node-type: storage
+      tolerations:
+      - key: "node-role.kubernetes.io/master"
+        operator: "Exists"
+        effect: "NoSchedule"
+      - key: "node-type.storage/taint"
+        operator: "Exists"
+        effect: "NoSchedule"
+      containers:
+      - name: {{ .Values.name }}
+        image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        - containerPort: {{ .Values.service.targetPort }}
+        env:
+        - name: RUSTFS_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.name }}-creds
+              key: root-user
+        - name: RUSTFS_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.name }}-creds
+              key: root-password
+        - name: RUSTFS_CONSOLE_ENABLE
+          value: "true"
+        livenessProbe:
+          httpGet:
+            path: /rustfs/health/live
+            port: {{ .Values.service.targetPort }}
+          initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
+          timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
+          failureThreshold: {{ .Values.livenessProbe.failureThreshold }}
+        resources:
+          limits:
+            cpu: {{ .Values.resources.limits.cpu }}
+            memory: {{ .Values.resources.limits.memory }}
+          requests:
+            cpu: {{ .Values.resources.requests.cpu }}
+            memory: {{ .Values.resources.requests.memory }}
+        volumeMounts:
+        - name: {{ .Values.name }}-local-storage
+          mountPath: /data
+        - name: {{ .Values.name }}-logs
+          mountPath: /logs
+      volumes:
+      # 若启用 PVC，则使用 PVC 作为数据卷；否则使用 hostPath
+      {{- if .Values.pvc.enable }}
+      - name: {{ .Values.name }}-local-storage
+        persistentVolumeClaim:
+          claimName: {{ .Values.name }}-data
+      {{- else }}
+      - name: {{ .Values.name }}-local-storage
+        hostPath:
+          path: {{ .Values.storage.dataPath }}
+          type: DirectoryOrCreate
+      {{- end }}
+      - name: {{ .Values.name }}-logs
+        hostPath:
+          path: {{ .Values.storage.logsPath }}
+          type: DirectoryOrCreate

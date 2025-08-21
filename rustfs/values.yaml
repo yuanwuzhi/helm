@@ -1,0 +1,50 @@
+# 基本配置
+name: rustfs
+namespace: haios
+replicaCount: 2
+
+# 镜像配置
+image:
+  repository: docker.io/rustfs/rustfs
+  tag: alpha
+  pullPolicy: IfNotPresent
+
+# 访问凭证（默认值，生产环境建议通过 --set 传入）
+credentials:
+  rootUser: admin
+  rootPassword: password123
+
+# 端口配置
+service:
+  type: NodePort
+  port: 9000
+  targetPort: 9000
+  nodePort: 30090
+
+# 资源限制
+resources:
+  limits:
+    cpu: 1
+    memory: 4Gi
+  requests:
+    cpu: 500m
+    memory: 2Gi
+
+# 存储配置（hostPath 路径）
+storage:
+  dataPath: /var/lib/rustfs
+  logsPath: /var/lib/rustfs/logs
+
+# PVC 配置（如需启用 PVC 而非 hostPath，可设置 enable: true）
+pvc:
+  enable: false
+  storageClassName: nfs-storage
+  accessModes: ReadWriteOnce
+  storage: 10Gi
+
+# 探针配置
+livenessProbe:
+  initialDelaySeconds: 30
+  periodSeconds: 30
+  timeoutSeconds: 10
+  failureThreshold: 3
