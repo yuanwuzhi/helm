@@ -10,6 +10,8 @@ data:
   # 服务发现：通过K8s DNS解析Service名称
   MYSQL_HOST: "mysql.haios.svc.cluster.local"  # 标准DNS格式[3](@ref)
   MYSQL_PORT: "3306"
+  MYSQL_DATABASE: "haios_db"
+  MYSQL_USER: "haios_d2vm"
   REDIS_HOST: "redis-master.haios.svc.cluster.local" 
   REDIS_PORT: "6379"
   # 非敏感配置
@@ -26,7 +28,7 @@ metadata:
   name: d2vm-app
   namespace: haios
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: d2vm
@@ -37,9 +39,14 @@ spec:
     spec:
       containers:
       - name: d2vm-container
-        image: haios/d2vm:alpha
+        image: haios/d2vm:beta-0.1
+        imagePullPolicy: Never  # 关键修改：禁用远程拉取[1,4](@ref)
         ports:
         - containerPort: 9000
+        # 外挂母机代码仓库, 方便开发调试，因为容器内部很简陋，没有git等工具
+        # volumeMounts:
+        # - name: host-data-volume
+        #   mountPath: /opt/D2VM
         # 动态注入环境变量
         env:
           # 从ConfigMap读取非敏感配置
@@ -53,35 +60,55 @@ spec:
               configMapKeyRef:
                 name: d2vm-env-config
                 key: MYSQL_PORT
-          # 从Secret读取敏感凭据
+          - name: MYSQL_DATABASE
+            valueFrom:
+              configMapKeyRef:
+                name: d2vm-env-config
+                key: MYSQL_DATABASE
           - name: MYSQL_USER
             valueFrom:
-              secretKeyRef:
-                name: mysql  # 使用现有Secret[1](@ref)
-                key: mysql-root-user  # 根据Secret实际字段调整
+              configMapKeyRef:
+                name: d2vm-env-config
+                key: MYSQL_USER
+          - name: REDIS_HOST
+            valueFrom:
+              configMapKeyRef:
+                name: d2vm-env-config
+                key: REDIS_HOST
+          - name: REDIS_PORT
+            valueFrom:
+              configMapKeyRef:
+                name: d2vm-env-config
+                key: REDIS_PORT
+          # 从Secret读取敏感凭据
           - name: MYSQL_PASSWORD
             valueFrom:
               secretKeyRef:
                 name: mysql
-                key: mysql-root-password
+                key: mysql-password
           - name: REDIS_PASSWORD
             valueFrom:
               secretKeyRef:
                 name: redis  # 复用Redis Secret
                 key: redis-password
         # 健康检查（需Django实现/health端点）
-        livenessProbe:
-          httpGet:
-            path: /health/
-            port: 9000
-          initialDelaySeconds: 30
-          periodSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /health/
-            port: 9000
-          initialDelaySeconds: 15
-          periodSeconds: 5
+        # livenessProbe:
+        #   httpGet:
+        #     path: /health/
+        #     port: 9000
+        #   initialDelaySeconds: 30
+        #   periodSeconds: 10
+        # readinessProbe:
+        #   httpGet:
+        #     path: /health/
+        #     port: 9000
+        #   initialDelaySeconds: 15
+        #   periodSeconds: 5
+      volumes:
+      - name: host-data-volume
+        hostPath:
+          path: /data/haios/deployment/D2VM
+          type: DirectoryOrCreate
 
 ---
 # --------------------------------
@@ -99,5 +126,5 @@ spec:
     - protocol: TCP
       port: 9000
       targetPort: 9000
-      nodePort: 30090  
+      nodePort: 30080
   type: NodePort
