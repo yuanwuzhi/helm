@@ -1,0 +1,29 @@
+# d2vm-env-config.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: d2vm-env-config  # 与Deployment中configMapRef.name一致
+  namespace: haios
+  labels:
+    app: d2vm
+data:
+  # --------------------------
+  # MySQL 非敏感配置（敏感密码在Secret中）
+  # --------------------------
+  MYSQL_HOST: "mysql.haios.svc.cluster.local"  # K8s DNS：MySQL服务名.命名空间.svc.cluster.local
+  MYSQL_PORT: "3306"                           # MySQL默认端口
+  MYSQL_DATABASE: "haios_db"                   # 应用使用的数据库名
+  MYSQL_USER: "haios_d2vm"                     # 应用访问MySQL的用户名
+
+  # --------------------------
+  # Redis 非敏感配置（敏感密码在Secret中）
+  # --------------------------
+  REDIS_HOST: "redis-master.haios.svc.cluster.local"  # K8s DNS：Redis主服务名
+  REDIS_PORT: "6379"                                   # Redis默认端口
+
+  # --------------------------
+  # 应用自身配置（非敏感）
+  # --------------------------
+  DJANGO_SETTINGS_MODULE: "myproject.settings"  # Django配置模块路径
+  GUNICORN_WORKERS: "4"                         # Gunicorn工作进程数（建议=2*CPU核心数+1）
+  LOG_LEVEL: "INFO"                             # 补充：日志级别（便于调试和监控）
