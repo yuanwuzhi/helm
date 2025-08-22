@@ -24,6 +24,5 @@ data:
   # --------------------------
   # 应用自身配置（非敏感）
   # --------------------------
-  DJANGO_SETTINGS_MODULE: "myproject.settings"  # Django配置模块路径
   GUNICORN_WORKERS: "4"                         # Gunicorn工作进程数（建议=2*CPU核心数+1）
   LOG_LEVEL: "INFO"                             # 补充：日志级别（便于调试和监控）

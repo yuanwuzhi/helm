@@ -22,7 +22,7 @@ spec:
     spec:
       containers:
       - name: d2vm-container
-        image: haios/d2vm:beta-0.2
+        image: haios/d2vm:beta-0.9
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 9000
