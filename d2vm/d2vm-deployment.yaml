@@ -1,0 +1,97 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: d2vm-app
+  namespace: haios
+  labels:
+    app: d2vm
+spec:
+  replicas: 1 # 根据实际需求调整
+  selector:
+    matchLabels:
+      app: d2vm
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: d2vm
+    spec:
+      containers:
+      - name: d2vm-container
+        image: haios/d2vm:beta-0.2
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 9000
+
+        # 挂载SSH密钥和Kube配置（路径适配root用户，权限合规）
+        volumeMounts:
+          - name: ssh-keys
+            mountPath: /root/.ssh/id_rsa
+            subPath: id_rsa
+            readOnly: true
+          - name: ssh-keys
+            mountPath: /root/.ssh/id_rsa.pub
+            subPath: id_rsa.pub
+            readOnly: true
+          - name: kube-config
+            mountPath: /root/.kube/config
+            subPath: kubeconfig
+            readOnly: true
+        env:
+          # MySQL密码：明确关联mysql Secret
+          - name: MYSQL_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: mysql                # 目标Secret名称（复用现有MySQL Secret）
+                key: mysql-password        # Secret内的密钥Key（与Secret实际字段一致）
+                optional: false            # 强制依赖此Secret，不存在则Pod启动失败（避免隐式错误）
+          # Redis密码：明确关联redis Secret
+          - name: REDIS_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: redis                # 目标Secret名称（复用现有Redis Secret）
+                key: redis-password        # Secret内的密钥Key（与Secret实际字段一致）
+                optional: false            # 强制依赖此Secret，确保配置完整性
+        # 批量注入非敏感配置（从ConfigMap读取，变量名与ConfigMap字段一致）
+        envFrom:
+          - configMapRef:
+              name: d2vm-env-config        # 复用现有ConfigMap（存储MySQL/Redis地址、端口等非敏感配置）
+              optional: false              # 强制依赖此ConfigMap，避免配置缺失
+
+        # 健康检查（按需启用，若当前未实现/health端点可暂时注释）
+        # livenessProbe:
+        #   httpGet:
+        #     path: /health                  # 建议与应用实际健康检查路径一致（如/actuator/health）
+        #     port: 9000
+        #   initialDelaySeconds: 60         # 根据应用启动耗时调整（如Java应用可设120）
+        #   periodSeconds: 10
+        #   timeoutSeconds: 5               # 新增超时配置，避免阻塞
+        # readinessProbe:
+        #   httpGet:
+        #     path: /health
+        #     port: 9000
+        #   initialDelaySeconds: 20
+        #   periodSeconds: 5
+        #   timeoutSeconds: 3
+        # startupProbe:
+        #   httpGet:
+        #     path: /health
+        #     port: 9000
+        #   failureThreshold: 30            # 30*10=300秒内启动成功即可
+        #   periodSeconds: 10
+        #   timeoutSeconds: 5
+
+      # 卷定义：关联SSH/Kube Secret，权限强制600（合规要求）
+      volumes:
+        - name: ssh-keys
+          secret:
+            secretName: d2vm-ssh-kube-config
+            defaultMode: 0600  # SSH私钥必须600权限（SSH协议强制要求）
+        - name: kube-config
+          secret:
+            secretName: d2vm-ssh-kube-config
+            defaultMode: 0600  # Kubeconfig权限600（避免敏感信息泄露）

@@ -1,0 +1,15 @@
+# d2vm-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: d2vm-service
+  namespace: haios
+spec:
+  selector:
+    app: d2vm
+  ports:
+    - protocol: TCP
+      port: 8000        # Service内部端口（集群内访问用）
+      targetPort: 9000  # 容器暴露的端口（需与Deployment的containerPort一致）
+      nodePort: 30080   # 节点端口（外部访问用：节点IP:30080）
+  type: NodePort
