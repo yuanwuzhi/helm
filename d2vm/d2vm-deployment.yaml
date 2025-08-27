@@ -29,13 +29,17 @@ spec:
 
         # 挂载SSH密钥和Kube配置（路径适配root用户，权限合规）
         volumeMounts:
-          - name: ssh-keys
+          - name: ssh
             mountPath: /root/.ssh/id_rsa
             subPath: id_rsa
             readOnly: true
-          - name: ssh-keys
+          - name: ssh
             mountPath: /root/.ssh/id_rsa.pub
             subPath: id_rsa.pub
+            readOnly: true
+          - name: ssh
+            mountPath: /root/.ssh/config
+            subPath: config
             readOnly: true
           - name: kube-config
             mountPath: /root/.kube/config
@@ -87,7 +91,7 @@ spec:
 
       # 卷定义：关联SSH/Kube Secret，权限强制600（合规要求）
       volumes:
-        - name: ssh-keys
+        - name: ssh
           secret:
             secretName: d2vm-ssh-kube-config
             defaultMode: 0600  # SSH私钥必须600权限（SSH协议强制要求）
