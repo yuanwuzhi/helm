@@ -22,10 +22,10 @@ spec:
     spec:
       containers:
       - name: d2vm-container
-        image: haios/d2vm:beta-0.9
+        image: haios/d2vm:v1.1.0
         imagePullPolicy: IfNotPresent
         ports:
-        - containerPort: 9000
+        - containerPort: 8000
 
         # 挂载SSH密钥和Kube配置（路径适配root用户，权限合规）
         volumeMounts:
@@ -66,28 +66,28 @@ spec:
               name: d2vm-env-config        # 复用现有ConfigMap（存储MySQL/Redis地址、端口等非敏感配置）
               optional: false              # 强制依赖此ConfigMap，避免配置缺失
 
-        # 健康检查（按需启用，若当前未实现/health端点可暂时注释）
-        # livenessProbe:
-        #   httpGet:
-        #     path: /health                  # 建议与应用实际健康检查路径一致（如/actuator/health）
-        #     port: 9000
-        #   initialDelaySeconds: 60         # 根据应用启动耗时调整（如Java应用可设120）
-        #   periodSeconds: 10
-        #   timeoutSeconds: 5               # 新增超时配置，避免阻塞
-        # readinessProbe:
-        #   httpGet:
-        #     path: /health
-        #     port: 9000
-        #   initialDelaySeconds: 20
-        #   periodSeconds: 5
-        #   timeoutSeconds: 3
-        # startupProbe:
-        #   httpGet:
-        #     path: /health
-        #     port: 9000
-        #   failureThreshold: 30            # 30*10=300秒内启动成功即可
-        #   periodSeconds: 10
-        #   timeoutSeconds: 5
+        # 健康检查
+        livenessProbe:
+          httpGet:
+            path: /health/                 # 建议与应用实际健康检查路径一致（如/actuator/health）
+            port: 8000
+          initialDelaySeconds: 60         # 根据应用启动耗时调整（如Java应用可设120）
+          periodSeconds: 10
+          timeoutSeconds: 5               # 新增超时配置，避免阻塞
+        readinessProbe:
+          httpGet:
+            path: /health/
+            port: 8000
+          initialDelaySeconds: 20
+          periodSeconds: 5
+          timeoutSeconds: 3
+        startupProbe:
+          httpGet:
+            path: /health/
+            port: 8000
+          failureThreshold: 30            # 30*10=300秒内启动成功即可
+          periodSeconds: 10
+          timeoutSeconds: 5
 
       # 卷定义：关联SSH/Kube Secret，权限强制600（合规要求）
       volumes:
