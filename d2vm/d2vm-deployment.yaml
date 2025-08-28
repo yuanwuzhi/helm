@@ -24,9 +24,6 @@ spec:
       - name: d2vm-container
         image: haios/d2vm:v1.1.0
         imagePullPolicy: IfNotPresent
-        ports:
-        - containerPort: 8000
-
         # 挂载SSH密钥和Kube配置（路径适配root用户，权限合规）
         volumeMounts:
           - name: ssh
